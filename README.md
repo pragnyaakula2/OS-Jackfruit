@@ -201,45 +201,51 @@ The key takeaway is that nice values do not reserve CPU — they bias the schedu
 
 ## 5. Design Decisions and Tradeoffs
 
-### Namespace Isolation — chroot vs pivot_root
+### Namespace Isolation 
 
-**Choice:** We used `chroot()` for filesystem isolation.
+Design Choice:
+Used Linux namespaces (CLONE_NEWPID, CLONE_NEWUTS, CLONE_NEWNS) with clone() to isolate process IDs, hostname, and mount points for each container.
+Tradeoff:
+Namespaces provide lightweight isolation but do not offer full security like virtual machines. Processes still share the same kernel, which can lead to potential interference or security risks.
+Justification:
+The goal of the project was to implement a lightweight container runtime rather than a full virtualization system. Namespaces are efficient, fast to create, and sufficient for demonstrating process isolation without the overhead of VMs.
 
-**Tradeoff:** `chroot` is simpler to implement but does not prevent a privileged process inside the container from escaping via `..` traversal or by calling `chroot` again. `pivot_root` fully replaces the root mount point and is escape-proof.
 
-**Justification:** For this project's scope, `chroot` provides sufficient demonstration of filesystem isolation. The containers run as root but the workloads are controlled test programs, not adversarial processes. `pivot_root` would require additional mount namespace setup (making the old root a tmpfs bind mount) which adds complexity without changing the observable behavior for the demo scenarios.
+### Supervisor Architecture 
+Design Choice:
+Implemented a parent-child model where the parent (engine) acts as a supervisor, launching containers using clone() and managing their lifecycle (logging, waiting, cleanup).
+Tradeoff:
+The supervisor runs in the foreground (for run) or simple background mode (start) without advanced process management (like restart policies or orchestration).
+Justification:
+A simple supervisor design keeps the system understandable and focused on core concepts like lifecycle management and monitoring. It also makes debugging easier and avoids unnecessary complexity for the scope of this project.
 
-### Supervisor Architecture — single-threaded event loop
 
-**Choice:** The supervisor uses a `select()`-based event loop on one thread for control plane handling, with separate threads only for logging.
+### IPC/Logging
+Design Choice:
+Used a pipe between parent and child processes to capture stdout/stderr from the container and write logs to files (logs/<id>.log).
+Tradeoff:
+Pipes are simple but limited. They can block if not handled carefully and are not suitable for high-throughput or distributed logging systems.
+Justification:
+Pipes provide a straightforward and reliable way to capture container output in real time without introducing external dependencies. For a single-node educational system, this approach is efficient and easy to implement.
 
-**Tradeoff:** `CMD_RUN` blocks the event loop while waiting for a container to exit, meaning no other CLI commands can be served during a `run`. A fully multi-threaded or async design would avoid this.
 
-**Justification:** For the project's requirements, `run` semantics are inherently blocking from the CLI's perspective. A separate thread per CLI connection would add synchronization complexity across the metadata list and the logging buffer without material benefit for the demo workloads.
+### Kernel Monitor 
+Design Choice:
+Implemented a Linux kernel module that tracks container processes using a timer and checks their RSS memory usage periodically. Enforced soft and hard limits via logging and SIGKILL.
+Tradeoff:
+Using a polling mechanism (timer-based) introduces slight overhead and is less efficient than event-driven approaches (like cgroups or hooks).
+Justification:
+A timer-based approach is simpler and provides clear visibility into how monitoring works internally. It avoids the complexity of integrating with cgroups while still demonstrating kernel-level resource enforcement effectively.
 
-### IPC/Logging — UNIX domain socket + pipes
 
-**Choice:** UNIX domain socket for control (Path B), pipes for logging (Path A).
+### Scheduling Experiments 
+Design Choice:
+Used multiple CPU-intensive processes (cpu_hog) and adjusted scheduling behavior using nice values to demonstrate CPU allocation differences.
+Tradeoff:
+This approach depends on the Linux scheduler and system load, so results may vary slightly across runs and environments.
+Justification:
+Using nice values provides a simple and observable way to demonstrate scheduling decisions without modifying the kernel scheduler itself. It aligns with the goal of showing practical scheduling effects in user space.
 
-**Tradeoff:** A FIFO (named pipe) would also work for control but only supports one reader/writer safely, making concurrent CLI commands harder. Shared memory would be faster but requires explicit framing and a separate signaling mechanism.
-
-**Justification:** UNIX domain sockets provide reliable, bidirectional, connection-oriented communication with natural request/response framing using `struct` serialization. Pipes for logging are the natural choice since the child's stdout/stderr file descriptors are inherited across `clone()`, requiring no additional IPC setup after the child starts.
-
-### Kernel Monitor — kthread with periodic polling
-
-**Choice:** A kernel thread that wakes every second to check RSS for all registered containers.
-
-**Tradeoff:** Polling introduces up to 1 second of latency between limit violation and enforcement. An event-driven approach using memory pressure callbacks would be more responsive but significantly more complex.
-
-**Justification:** One-second granularity is sufficient for the memory workloads in this project. The kthread approach is straightforward to implement correctly with a kernel mutex protecting the registered PID list, and the polling interval is configurable.
-
-### Scheduling Experiments — nice values
-
-**Choice:** Used `nice()` syscall inside `child_fn()` to set container priority, observed with `top`.
-
-**Tradeoff:** nice values only influence CFS weight and have no effect on real-time scheduling classes. CPU affinity (`sched_setaffinity`) would give stronger isolation guarantees.
-
-**Justification:** nice values are the most direct demonstration of the CFS priority mechanism and require no additional privilege beyond what the supervisor already has. The observable difference in CPU share under contention directly illustrates the scheduler's weight-based fairness model.
 
 ---
 
