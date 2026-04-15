@@ -86,41 +86,48 @@ rm -rf rootfs-alpha rootfs-beta logs
 ## 3. Demo Screenshots
 
 ### Screenshot 1 — Multi-Container Supervision
-![Multi-container supervision](s1.png)
+![Multi-container supervision](images/s1.png)
 
 Multiple containers were launched in the background using the engine, demonstrating container creation with isolated root filesystems and process execution.
 
 ### Screenshot 2 — Metadata Tracking (ps)
-![ps output](s2.png)
+![ps output](images/s2.png)
 
 The engine ps command displays the status of all containers, showing their IDs, process IDs, and lifecycle states (running or exited).
 
 ### Screenshot 3 — Bounded-Buffer Logging
-![Logging pipeline](s03.png)(s13.png)
+![Logging pipeline](images/s03.png)
+![more logs](images/s13.png)
 
 The container c1 is started and continuously logs buffered output, demonstrating real-time IPC logging from the running process.
 ### Screenshot 4 — CLI and IPC
-![Soft limit](s04.png)(s14.png)
+![Soft limit](images/s04.png)
+![more logs](images/s14.png)
 
 The container c1 is launched and actively logging output, while engine ps confirms multiple running container instances and their process states.
 
 ### Screenshot 5 — Soft-Limit Warning
-![Hard limit](s05.png)(s15.png)(s25.png)
+![Hard limit](images/s05.png)
+![more logs](images/s15.png)
+![more logs](images/s25.png)
 
 dmesg output showing the kernel monitor detecting container exceeding its soft limit . The module logs a SOFT LIMIT warning event with the container ID, PID, RSS, and limit values
 
 ### Screenshot 6 — Hard-Limit Enforcement
-![CLI and IPC](s06.png)(s16.png)
+![CLI and IPC](images/s06.png)
+![more logs](images/s16.png)
 
 `engine ps` showing container  in state `hard_limit_killed` after the kernel module killed it when RSS exceeded the hard limit . The supervisor correctly classifies this as a hard-limit kill because `stop_requested` was not set.
 
 ### Screenshot 7 — Scheduling Experiment
-![Scheduling](s07.png)(s17.png)(s27.png)
+![Scheduling](images/s07.png)
+![more logs](images/s17.png)
+![more logs](images/s27.png)
 
 Two cpu_hog processes were run concurrently with different nice values, where both consumed high CPU, but the lower nice value (higher priority) process received slightly more CPU time, demonstrating CFS scheduling behavior.
 
 ### Screenshot 8 — Clean Teardown
-![Clean teardown](s8.png)
+![Clean teardown](images/s8.png)
 
 Process checks using ps aux | grep show no active cpu_hog, container, or zombie processes, indicating a clean system state.
 
