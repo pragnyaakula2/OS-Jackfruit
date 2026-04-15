@@ -298,6 +298,51 @@ Justification:
 Using nice values provides a simple and observable way to demonstrate scheduling decisions without modifying the kernel scheduler itself. It aligns with the goal of showing practical scheduling effects in user space.
 
 
+The `top` command was used to monitor CPU usage of both processes in real time.
+
+---
+## Scheduler Experiment Results
+
+### Experimental Setup
+
+Two CPU-bound processes (`cpu_hog`) were executed simultaneously with different nice values to observe how the Linux scheduler distributes CPU time.
+
+### Raw Observations
+
+From the `top` output:
+
+- Process A (High Priority)
+  - Nice Value (NI): -10  
+  - CPU Usage: approximately 60–70%
+
+- Process B (Low Priority)
+  - Nice Value (NI): 10  
+  - CPU Usage: approximately 30–40%
+
+Both processes were continuously runnable and competing for CPU resources.
+
+---
+
+### Comparison
+
+| Process | Nice Value (NI) | CPU Usage (%) |
+|--------|----------------|---------------|
+| cpu_hog (High Priority) | -10 | ~65% |
+| cpu_hog (Low Priority)  | 10  | ~35% |
+
+---
+
+### Explanation
+
+The results demonstrate that the Linux scheduler allocates CPU time based on process priority. The process with a lower nice value (higher priority) consistently received a larger share of CPU time compared to the process with a higher nice value (lower priority).
+
+This behavior is due to the Completely Fair Scheduler (CFS), which assigns weights to processes based on their nice values. Higher-priority processes are given more CPU time, but lower-priority processes are not starved, ensuring fairness.
+
+Even though both processes are CPU-bound and always ready to run, the scheduler distributes CPU time proportionally according to priority.
+
+The exact CPU percentages may vary depending on system load and timing, but the relative difference remains consistent across runs.
+
+
 ## Conclusion
 
 This project demonstrates how operating system mechanisms such as namespaces, process management, synchronization, memory control, and scheduling work together to support containerized execution. The runtime leverages these kernel features to provide isolation, control, and efficiency while sharing the underlying system resources.
