@@ -255,6 +255,48 @@ make clean
 ```
 
 ---
+Design Decisions and Tradeoffs
+
+ 1. Namespace Isolation
+Design Choice:
+Used Linux namespaces (CLONE_NEWPID, CLONE_NEWUTS, CLONE_NEWNS) with clone() to isolate process IDs, hostname, and mount points for each container.
+Tradeoff:
+Namespaces provide lightweight isolation but do not offer full security like virtual machines. Processes still share the same kernel, which can lead to potential interference or security risks.
+Justification:
+The goal of the project was to implement a lightweight container runtime rather than a full virtualization system. Namespaces are efficient, fast to create, and sufficient for demonstrating process isolation without the overhead of VMs.
+
+ 2. Supervisor Architecture (engine.c)
+Design Choice:
+Implemented a parent-child model where the parent (engine) acts as a supervisor, launching containers using clone() and managing their lifecycle (logging, waiting, cleanup).
+Tradeoff:
+The supervisor runs in the foreground (for run) or simple background mode (start) without advanced process management (like restart policies or orchestration).
+Justification:
+A simple supervisor design keeps the system understandable and focused on core concepts like lifecycle management and monitoring. It also makes debugging easier and avoids unnecessary complexity for the scope of this project.
+
+ 3. IPC and Logging
+Design Choice:
+Used a pipe between parent and child processes to capture stdout/stderr from the container and write logs to files (logs/<id>.log).
+Tradeoff:
+Pipes are simple but limited. They can block if not handled carefully and are not suitable for high-throughput or distributed logging systems.
+Justification:
+Pipes provide a straightforward and reliable way to capture container output in real time without introducing external dependencies. For a single-node educational system, this approach is efficient and easy to implement.
+
+ 4. Kernel Memory Monitor (monitor.c)
+Design Choice:
+Implemented a Linux kernel module that tracks container processes using a timer and checks their RSS memory usage periodically. Enforced soft and hard limits via logging and SIGKILL.
+Tradeoff:
+Using a polling mechanism (timer-based) introduces slight overhead and is less efficient than event-driven approaches (like cgroups or hooks).
+Justification:
+A timer-based approach is simpler and provides clear visibility into how monitoring works internally. It avoids the complexity of integrating with cgroups while still demonstrating kernel-level resource enforcement effectively.
+
+ 5. Scheduling Experiments
+Design Choice:
+Used multiple CPU-intensive processes (cpu_hog) and adjusted scheduling behavior using nice values to demonstrate CPU allocation differences.
+Tradeoff:
+This approach depends on the Linux scheduler and system load, so results may vary slightly across runs and environments.
+Justification:
+Using nice values provides a simple and observable way to demonstrate scheduling decisions without modifying the kernel scheduler itself. It aligns with the goal of showing practical scheduling effects in user space.
+
 
 ## Conclusion
 
