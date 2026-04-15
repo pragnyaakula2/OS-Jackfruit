@@ -47,6 +47,7 @@ int main(int argc, char *argv[])
 
     while (1) {
         char *mem = malloc(chunk_bytes);
+        
         if (!mem) {
             printf("malloc failed after %d allocations\n", count);
             break;
