@@ -4,8 +4,8 @@
 
 | Name | SRN |
 |------|-----|
-| Akula Pragnya | PES1UG24AM028 |
-| Bhoomika Patil | PES1UG25AM801 |
+| Ananya raghavendra | PES1UG24AM037 |
+| ananya s| PES1UG24AM038 |
 
 ---
 
